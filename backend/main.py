@@ -9,7 +9,7 @@ import models
 from seed import seed_database
 from services.broker import start_broker
 from services.mqtt_worker import start_worker
-from routers import auth, dashboard, gateways, devices, profiles, rules, users, broker
+from routers import auth, dashboard, gateways, devices, profiles, rules, users, broker, decoders
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(name)s %(levelname)s %(message)s")
 
@@ -39,6 +39,7 @@ app.include_router(profiles.router)
 app.include_router(rules.router)
 app.include_router(users.router)
 app.include_router(broker.router)
+app.include_router(decoders.router)
 
 # Serve frontend
 frontend_dir = os.path.join(os.path.dirname(__file__), "..", "frontend")

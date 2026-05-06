@@ -25,6 +25,7 @@ function artware() {
       { id: 'gateways',  label: 'Gateways',  icon: '📡', minRole: 'viewer' },
       { id: 'devices',   label: 'Devices',   icon: '🔌', minRole: 'viewer' },
       { id: 'profiles',  label: 'Device Profiles', icon: '🗂️', minRole: 'viewer' },
+      { id: 'decoders',  label: 'Decoders',        icon: '🔣', minRole: 'viewer' },
       { id: 'rules',     label: 'Forwarding Rules', icon: '🔀', minRole: 'viewer' },
       { id: 'settings',  label: 'Settings',  icon: '⚙️', minRole: 'operator' },
       { id: 'users',     label: 'Users',     icon: '👥', minRole: 'admin' },
@@ -39,6 +40,8 @@ function artware() {
     gateways: [],
     devices: [],
     profiles: [],
+    decodersList: [],
+    decoderTest: { key: 'dragino_lht65', hex: '857E026D03D6', result: null, loading: false },
     rules: [],
     usersList: [],
     auditLogs: [],
@@ -139,6 +142,7 @@ function artware() {
         this.loadGateways(),
         this.loadDevices(),
         this.loadProfiles(),
+        this.loadDecoders(),
         this.loadRules(),
         this.loadUsers(),
         this.loadAuditLog(),
@@ -189,6 +193,18 @@ function artware() {
       });
     },
 
+    async loadDecoders()  { try { this.decodersList = await this.api('GET', '/api/decoders/') || []; } catch(e) {} },
+    async runDecoderTest() {
+      this.decoderTest.loading = true;
+      this.decoderTest.result = null;
+      try {
+        this.decoderTest.result = await this.post('/api/decoders/test', {
+          decoder_key: this.decoderTest.key,
+          payload_hex: this.decoderTest.hex,
+        });
+      } catch(e) { this.decoderTest.result = { ok: false, error: e.message }; }
+      finally { this.decoderTest.loading = false; }
+    },
     async loadGateways()  { try { this.gateways = await this.api('GET', '/api/gateways/') || []; } catch(e) {} },
     async loadDevices()   { try { this.devices  = await this.api('GET', '/api/devices/')  || []; } catch(e) {} },
     async loadProfiles()  { try { this.profiles = await this.api('GET', '/api/profiles/') || []; } catch(e) {} },
@@ -213,6 +229,7 @@ function artware() {
       if (page === 'dashboard') { setTimeout(() => this.loadDashboard(), 50); }
       if (page === 'users')     this.loadUsers();
       if (page === 'audit')     this.loadAuditLog();
+      if (page === 'decoders')  this.loadDecoders();
     },
 
     currentPageTitle() {
