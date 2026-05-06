@@ -1,0 +1,899 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ARTware — LoRaWAN Middleware</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <style>
+    :root { --teal: #008080; --teal-dark: #004d4d; --teal-light: #00b3b3; }
+
+    body {
+      background: linear-gradient(135deg, #001a1a 0%, #002b2b 45%, #003d3d 100%);
+      background-attachment: fixed;
+      min-height: 100vh;
+      font-family: 'Inter', system-ui, sans-serif;
+    }
+
+    /* Glass morphism */
+    .glass {
+      background: rgba(0, 128, 128, 0.1);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border: 1px solid rgba(0, 200, 200, 0.18);
+    }
+    .glass-sidebar {
+      background: rgba(0, 60, 60, 0.55);
+      backdrop-filter: blur(30px);
+      -webkit-backdrop-filter: blur(30px);
+      border-right: 1px solid rgba(0, 200, 200, 0.15);
+    }
+    .glass-card {
+      background: rgba(0, 128, 128, 0.12);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid rgba(0, 200, 200, 0.2);
+      border-radius: 16px;
+    }
+    .glass-input {
+      background: rgba(0, 128, 128, 0.15);
+      border: 1px solid rgba(0, 200, 200, 0.3);
+      color: #e0f7f7;
+      border-radius: 8px;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    .glass-input:focus { border-color: #00b3b3; }
+    .glass-input::placeholder { color: rgba(200, 240, 240, 0.4); }
+
+    .btn-primary {
+      background: linear-gradient(135deg, #008080, #00b3b3);
+      color: white;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: 600;
+      transition: opacity 0.2s, transform 0.1s;
+    }
+    .btn-primary:hover { opacity: 0.9; transform: translateY(-1px); }
+    .btn-primary:active { transform: translateY(0); }
+
+    .btn-ghost {
+      background: rgba(0,128,128,0.15);
+      color: #a0e0e0;
+      border: 1px solid rgba(0,200,200,0.2);
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: 500;
+      transition: background 0.2s;
+    }
+    .btn-ghost:hover { background: rgba(0,128,128,0.3); }
+
+    .btn-danger {
+      background: rgba(220,38,38,0.2);
+      color: #fca5a5;
+      border: 1px solid rgba(220,38,38,0.3);
+      border-radius: 8px;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .btn-danger:hover { background: rgba(220,38,38,0.35); }
+
+    /* Nav items */
+    .nav-item {
+      display: flex; align-items: center; gap: 10px;
+      padding: 10px 14px; border-radius: 10px;
+      color: rgba(180,230,230,0.7);
+      cursor: pointer; transition: all 0.2s;
+      font-size: 0.875rem; font-weight: 500;
+    }
+    .nav-item:hover { background: rgba(0,200,200,0.12); color: #fff; }
+    .nav-item.active { background: rgba(0,200,200,0.2); color: #fff; border-left: 3px solid #00b3b3; }
+
+    /* Status badges */
+    .badge-online { background: rgba(16,185,129,0.2); color: #6ee7b7; border: 1px solid rgba(16,185,129,0.3); }
+    .badge-offline { background: rgba(239,68,68,0.15); color: #fca5a5; border: 1px solid rgba(239,68,68,0.25); }
+    .badge-warning { background: rgba(245,158,11,0.15); color: #fcd34d; border: 1px solid rgba(245,158,11,0.25); }
+
+    /* Role badges */
+    .role-superadmin { background: rgba(168,85,247,0.2); color: #d8b4fe; border: 1px solid rgba(168,85,247,0.3); }
+    .role-admin { background: rgba(0,128,128,0.25); color: #99f6e4; border: 1px solid rgba(0,200,200,0.3); }
+    .role-operator { background: rgba(59,130,246,0.2); color: #93c5fd; border: 1px solid rgba(59,130,246,0.3); }
+    .role-viewer { background: rgba(107,114,128,0.2); color: #d1d5db; border: 1px solid rgba(107,114,128,0.3); }
+
+    /* Target type badges */
+    .target-thingsboard { background: rgba(245,158,11,0.2); color: #fcd34d; border: 1px solid rgba(245,158,11,0.3); }
+    .target-chirpstack { background: rgba(99,102,241,0.2); color: #a5b4fc; border: 1px solid rgba(99,102,241,0.3); }
+    .target-webhook { background: rgba(0,128,128,0.2); color: #99f6e4; border: 1px solid rgba(0,200,200,0.3); }
+
+    .badge { padding: 2px 10px; border-radius: 99px; font-size: 0.7rem; font-weight: 600; }
+
+    /* Table */
+    .tbl { width: 100%; border-collapse: collapse; }
+    .tbl th { color: rgba(150,220,220,0.7); font-size: 0.7rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; padding: 10px 12px; text-align: left; border-bottom: 1px solid rgba(0,200,200,0.12); }
+    .tbl td { padding: 12px 12px; color: #d0f0f0; font-size: 0.85rem; border-bottom: 1px solid rgba(0,200,200,0.07); vertical-align: middle; }
+    .tbl tr:hover td { background: rgba(0,200,200,0.05); }
+
+    /* Scrollbar */
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: rgba(0,0,0,0.1); }
+    ::-webkit-scrollbar-thumb { background: rgba(0,200,200,0.3); border-radius: 3px; }
+
+    /* Pulse animation for online dot */
+    @keyframes pulse-ring { 0%{transform:scale(0.8);opacity:1} 100%{transform:scale(2.2);opacity:0} }
+    .pulse-dot { position:relative; display:inline-block; width:8px; height:8px; border-radius:50%; background:#10b981; }
+    .pulse-dot::after { content:''; position:absolute; inset:0; border-radius:50%; background:#10b981; animation:pulse-ring 1.4s ease-out infinite; }
+
+    /* Modal overlay */
+    .modal-overlay { position:fixed; inset:0; background:rgba(0,0,0,0.6); backdrop-filter:blur(4px); z-index:50; display:flex; align-items:center; justify-content:center; padding:16px; }
+
+    /* Sidebar overlay on mobile */
+    .sidebar-overlay { position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:30; }
+
+    /* Login card shimmer */
+    .shimmer { background: linear-gradient(90deg, rgba(0,200,200,0.05) 25%, rgba(0,200,200,0.12) 50%, rgba(0,200,200,0.05) 75%); background-size: 200% 100%; animation: shimmer 2s infinite; }
+    @keyframes shimmer { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
+
+    /* Stat card gradient border */
+    .stat-card { position:relative; overflow:hidden; }
+    .stat-card::before { content:''; position:absolute; inset:-1px; border-radius:17px; background:linear-gradient(135deg,rgba(0,200,200,0.3),rgba(0,128,128,0.1)); z-index:-1; }
+
+    /* Bottom mobile nav */
+    .mobile-nav { display:none; }
+    @media (max-width: 768px) {
+      .desktop-sidebar { display:none !important; }
+      .mobile-nav { display:flex !important; }
+      .main-content { padding-bottom: 80px !important; }
+    }
+
+    /* Smooth transitions */
+    [x-cloak] { display: none !important; }
+    .page-enter { animation: fadeSlideIn 0.25s ease; }
+    @keyframes fadeSlideIn { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
+  </style>
+</head>
+<body x-data="artware()" x-cloak class="h-full text-white">
+
+  <!-- ═══════════════════════════════ LOGIN PAGE ═══════════════════════════════ -->
+  <template x-if="!isAuthenticated">
+    <div class="min-h-screen flex items-center justify-center p-4">
+      <!-- Background blobs -->
+      <div class="fixed top-0 left-0 w-96 h-96 rounded-full" style="background:radial-gradient(circle,rgba(0,128,128,0.25) 0%,transparent 70%);transform:translate(-30%,-30%)"></div>
+      <div class="fixed bottom-0 right-0 w-96 h-96 rounded-full" style="background:radial-gradient(circle,rgba(0,179,179,0.15) 0%,transparent 70%);transform:translate(30%,30%)"></div>
+
+      <div class="glass-card w-full max-w-md p-8 relative">
+        <!-- Logo -->
+        <div class="text-center mb-8">
+          <div class="inline-flex items-center gap-3 mb-2">
+            <div class="w-10 h-10 rounded-xl flex items-center justify-center" style="background:linear-gradient(135deg,#008080,#00b3b3)">
+              <svg class="w-6 h-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.111 16.404a5.5 5.5 0 017.778 0M12 20h.01m-7.08-7.071c3.904-3.905 10.236-3.905 14.141 0M1.394 9.393c5.857-5.857 15.355-5.857 21.213 0"/></svg>
+            </div>
+            <span class="text-3xl font-bold tracking-tight" style="background:linear-gradient(135deg,#fff,#a0e8e8);-webkit-background-clip:text;-webkit-text-fill-color:transparent">ARTware</span>
+          </div>
+          <p class="text-sm" style="color:rgba(160,220,220,0.6)">LoRaWAN Middleware Platform</p>
+        </div>
+
+        <!-- Error -->
+        <div x-show="loginError" class="mb-4 px-4 py-3 rounded-lg text-sm" style="background:rgba(239,68,68,0.15);border:1px solid rgba(239,68,68,0.3);color:#fca5a5" x-text="loginError"></div>
+
+        <!-- Form -->
+        <form @submit.prevent="login" class="space-y-4">
+          <div>
+            <label class="block text-xs font-medium mb-1" style="color:rgba(160,220,220,0.7)">Email</label>
+            <input x-model="loginForm.email" type="email" placeholder="admin@artware.io"
+              class="glass-input w-full px-4 py-2.5 text-sm" required />
+          </div>
+          <div>
+            <label class="block text-xs font-medium mb-1" style="color:rgba(160,220,220,0.7)">Password</label>
+            <input x-model="loginForm.password" type="password" placeholder="••••••••"
+              class="glass-input w-full px-4 py-2.5 text-sm" required />
+          </div>
+          <button type="submit" :disabled="loginLoading" class="btn-primary w-full py-2.5 text-sm mt-2" :class="loginLoading ? 'opacity-70' : ''">
+            <span x-show="!loginLoading">Sign in</span>
+            <span x-show="loginLoading">Signing in…</span>
+          </button>
+        </form>
+
+        <!-- Demo credentials -->
+        <div class="mt-6 pt-5 border-t" style="border-color:rgba(0,200,200,0.15)">
+          <p class="text-xs mb-3 text-center" style="color:rgba(160,220,220,0.5)">Demo credentials</p>
+          <div class="grid grid-cols-2 gap-2">
+            <template x-for="cred in demoCredentials" :key="cred.email">
+              <button @click="quickLogin(cred)" class="btn-ghost text-xs py-2 px-3 text-left">
+                <div class="font-semibold" x-text="cred.role"></div>
+                <div class="opacity-60 truncate" x-text="cred.email"></div>
+              </button>
+            </template>
+          </div>
+        </div>
+      </div>
+    </div>
+  </template>
+
+  <!-- ═══════════════════════════════ APP SHELL ═══════════════════════════════ -->
+  <template x-if="isAuthenticated">
+    <div class="flex h-screen overflow-hidden">
+
+      <!-- Mobile sidebar overlay -->
+      <div x-show="mobileSidebarOpen" @click="mobileSidebarOpen=false" class="sidebar-overlay md:hidden"></div>
+
+      <!-- ── SIDEBAR ── -->
+      <aside class="desktop-sidebar glass-sidebar w-60 flex-shrink-0 flex flex-col h-full z-40"
+             :class="mobileSidebarOpen ? 'fixed inset-y-0 left-0 w-72 z-40' : 'relative'"
+             x-show="mobileSidebarOpen || !isMobile()"
+             style="display:flex">
+
+        <!-- Brand -->
+        <div class="px-5 py-5 border-b" style="border-color:rgba(0,200,200,0.12)">
+          <div class="flex items-center gap-3">
+            <div class="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0" style="background:linear-gradient(135deg,#008080,#00b3b3)">
+              <svg class="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.111 16.404a5.5 5.5 0 017.778 0M12 20h.01m-7.08-7.071c3.904-3.905 10.236-3.905 14.141 0M1.394 9.393c5.857-5.857 15.355-5.857 21.213 0"/></svg>
+            </div>
+            <div>
+              <div class="font-bold text-white text-sm tracking-wide">ARTware</div>
+              <div class="text-xs" style="color:rgba(160,220,220,0.5)">LoRaWAN Platform</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Nav -->
+        <nav class="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
+          <template x-for="item in navItems" :key="item.id">
+            <div x-show="canAccess(item.minRole)"
+                 @click="navigate(item.id); mobileSidebarOpen=false"
+                 class="nav-item" :class="currentPage === item.id ? 'active' : ''">
+              <span class="text-base flex-shrink-0" x-text="item.icon"></span>
+              <span x-text="item.label"></span>
+            </div>
+          </template>
+        </nav>
+
+        <!-- User card -->
+        <div class="px-3 pb-4 border-t pt-4" style="border-color:rgba(0,200,200,0.12)">
+          <div class="glass px-3 py-3 rounded-xl">
+            <div class="flex items-center gap-3">
+              <div class="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0" style="background:linear-gradient(135deg,#008080,#00b3b3)" x-text="user.full_name[0]"></div>
+              <div class="flex-1 min-w-0">
+                <div class="text-sm font-medium text-white truncate" x-text="user.full_name"></div>
+                <div class="text-xs truncate" style="color:rgba(160,220,220,0.5)" x-text="user.email"></div>
+              </div>
+            </div>
+            <button @click="logout()" class="btn-ghost w-full mt-3 py-1.5 text-xs">Sign out</button>
+          </div>
+        </div>
+      </aside>
+
+      <!-- ── MAIN CONTENT ── -->
+      <div class="flex-1 flex flex-col min-w-0 overflow-hidden">
+
+        <!-- Top bar -->
+        <header class="glass flex items-center gap-4 px-4 md:px-6 py-3 flex-shrink-0" style="border-bottom:1px solid rgba(0,200,200,0.12)">
+          <!-- Mobile hamburger -->
+          <button @click="mobileSidebarOpen=!mobileSidebarOpen" class="md:hidden btn-ghost p-2">
+            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
+          </button>
+          <div class="flex-1">
+            <h1 class="text-sm font-semibold text-white" x-text="currentPageTitle()"></h1>
+          </div>
+          <!-- Live indicator -->
+          <div class="flex items-center gap-2 text-xs" style="color:rgba(160,220,220,0.6)">
+            <span class="pulse-dot"></span>
+            <span class="hidden sm:inline">Live feed active</span>
+          </div>
+          <!-- Role badge -->
+          <span class="badge hidden sm:inline" :class="'role-'+user.role" x-text="user.role"></span>
+        </header>
+
+        <!-- Pages -->
+        <main class="flex-1 overflow-y-auto p-4 md:p-6 main-content">
+
+          <!-- ── DASHBOARD ── -->
+          <div x-show="currentPage==='dashboard'" class="page-enter space-y-6">
+            <!-- Stats row -->
+            <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+              <div class="glass-card stat-card p-5">
+                <div class="text-2xl mb-1">📡</div>
+                <div class="text-2xl font-bold text-white" x-text="stats.online_gateways + '/' + stats.total_gateways"></div>
+                <div class="text-xs mt-1" style="color:rgba(160,220,220,0.6)">Gateways Online</div>
+              </div>
+              <div class="glass-card stat-card p-5">
+                <div class="text-2xl mb-1">🔌</div>
+                <div class="text-2xl font-bold text-white" x-text="stats.online_devices + '/' + stats.total_devices"></div>
+                <div class="text-xs mt-1" style="color:rgba(160,220,220,0.6)">Devices Online</div>
+              </div>
+              <div class="glass-card stat-card p-5">
+                <div class="text-2xl mb-1">📶</div>
+                <div class="text-2xl font-bold text-white" x-text="stats.uplinks_last_hour"></div>
+                <div class="text-xs mt-1" style="color:rgba(160,220,220,0.6)">Uplinks / Hour</div>
+              </div>
+              <div class="glass-card stat-card p-5">
+                <div class="text-2xl mb-1">📊</div>
+                <div class="text-2xl font-bold text-white" x-text="stats.total_uplinks"></div>
+                <div class="text-xs mt-1" style="color:rgba(160,220,220,0.6)">Total Uplinks</div>
+              </div>
+            </div>
+
+            <!-- Chart + Gateway map -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              <!-- Uplink chart -->
+              <div class="glass-card p-5">
+                <h3 class="text-sm font-semibold text-white mb-4">Uplinks — Last 12 Hours</h3>
+                <canvas id="uplinkChart" height="160"></canvas>
+              </div>
+              <!-- Gateway status -->
+              <div class="glass-card p-5">
+                <h3 class="text-sm font-semibold text-white mb-4">Gateway Status</h3>
+                <div class="space-y-3">
+                  <template x-for="gw in mapGateways" :key="gw.id">
+                    <div class="glass p-3 rounded-xl flex items-center gap-3">
+                      <span class="text-xl">📡</span>
+                      <div class="flex-1 min-w-0">
+                        <div class="text-sm font-medium text-white truncate" x-text="gw.name"></div>
+                        <div class="text-xs" style="color:rgba(160,220,220,0.5)" x-text="gw.model"></div>
+                      </div>
+                      <div class="text-right flex-shrink-0">
+                        <span class="badge" :class="'badge-'+gw.status" x-text="gw.status"></span>
+                        <div class="text-xs mt-1" style="color:rgba(160,220,220,0.4)" x-text="gw.device_count+' devices'"></div>
+                      </div>
+                    </div>
+                  </template>
+                  <div x-show="mapGateways.length===0" class="text-center py-6 text-sm" style="color:rgba(160,220,220,0.4)">No gateways yet</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Live uplink feed -->
+            <div class="glass-card p-5">
+              <div class="flex items-center justify-between mb-4">
+                <h3 class="text-sm font-semibold text-white">Live Uplink Feed</h3>
+                <span class="text-xs px-2 py-1 rounded-full" style="background:rgba(0,200,200,0.15);color:#a0e0e0">Auto-refresh 10s</span>
+              </div>
+              <div class="overflow-x-auto">
+                <table class="tbl">
+                  <thead><tr>
+                    <th>Time</th><th>Device</th><th>Profile</th><th>RSSI</th><th>SNR</th><th>Decoded Data</th>
+                  </tr></thead>
+                  <tbody>
+                    <template x-for="u in recentUplinks.slice(0,15)" :key="u.id">
+                      <tr>
+                        <td class="whitespace-nowrap text-xs" style="color:rgba(160,220,220,0.5)" x-text="fmtTime(u.timestamp)"></td>
+                        <td>
+                          <div class="text-sm font-medium text-white" x-text="u.device_name"></div>
+                          <div class="text-xs font-mono" style="color:rgba(160,220,220,0.4)" x-text="u.dev_eui"></div>
+                        </td>
+                        <td><span class="badge badge-online text-xs" x-text="u.profile_name"></span></td>
+                        <td class="text-xs" x-text="u.rssi + ' dBm'"></td>
+                        <td class="text-xs" x-text="u.snr + ' dB'"></td>
+                        <td>
+                          <div class="flex flex-wrap gap-1">
+                            <template x-for="[k,v] in Object.entries(u.payload_decoded||{})" :key="k">
+                              <span class="px-2 py-0.5 rounded text-xs font-mono" style="background:rgba(0,200,200,0.12);color:#a0e8e8">
+                                <span class="opacity-60" x-text="k+': '"></span><span x-text="v"></span>
+                              </span>
+                            </template>
+                          </div>
+                        </td>
+                      </tr>
+                    </template>
+                    <tr x-show="recentUplinks.length===0"><td colspan="6" class="text-center py-6 text-sm" style="color:rgba(160,220,220,0.4)">Waiting for uplinks…</td></tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+          <!-- ── GATEWAYS ── -->
+          <div x-show="currentPage==='gateways'" class="page-enter space-y-4">
+            <div class="flex items-center justify-between">
+              <p class="text-sm" style="color:rgba(160,220,220,0.6)" x-text="gateways.length+' gateways registered'"></p>
+              <button x-show="canAccess('admin')" @click="openGatewayModal()" class="btn-primary px-4 py-2 text-sm">+ Add Gateway</button>
+            </div>
+            <!-- Cards (mobile) / Table (desktop) -->
+            <div class="hidden md:block glass-card overflow-hidden">
+              <table class="tbl">
+                <thead><tr><th>Gateway</th><th>EUI</th><th>Model</th><th>MQTT Topic</th><th>Status</th><th>Last Seen</th><th>Devices</th><th x-show="canAccess('admin')">Actions</th></tr></thead>
+                <tbody>
+                  <template x-for="gw in gateways" :key="gw.id">
+                    <tr>
+                      <td class="font-medium text-white" x-text="gw.name"></td>
+                      <td class="font-mono text-xs" style="color:rgba(160,220,220,0.6)" x-text="gw.eui"></td>
+                      <td class="text-xs" x-text="gw.model"></td>
+                      <td class="text-xs font-mono" style="color:rgba(160,220,220,0.5)" x-text="gw.mqtt_topic_pattern"></td>
+                      <td><span class="badge" :class="'badge-'+gw.status" x-text="gw.status"></span></td>
+                      <td class="text-xs" style="color:rgba(160,220,220,0.5)" x-text="gw.last_seen ? fmtTime(gw.last_seen) : '—'"></td>
+                      <td x-text="gw.device_count"></td>
+                      <td x-show="canAccess('admin')">
+                        <div class="flex gap-2">
+                          <button @click="openGatewayModal(gw)" class="btn-ghost px-2 py-1 text-xs">Edit</button>
+                          <button @click="deleteGateway(gw.id)" class="btn-danger px-2 py-1 text-xs">Del</button>
+                        </div>
+                      </td>
+                    </tr>
+                  </template>
+                  <tr x-show="gateways.length===0"><td colspan="8" class="text-center py-8 text-sm" style="color:rgba(160,220,220,0.4)">No gateways. Add your first gateway above.</td></tr>
+                </tbody>
+              </table>
+            </div>
+            <!-- Mobile cards -->
+            <div class="md:hidden space-y-3">
+              <template x-for="gw in gateways" :key="gw.id">
+                <div class="glass-card p-4">
+                  <div class="flex items-start justify-between mb-2">
+                    <div>
+                      <div class="font-medium text-white" x-text="gw.name"></div>
+                      <div class="text-xs font-mono mt-0.5" style="color:rgba(160,220,220,0.5)" x-text="gw.eui"></div>
+                    </div>
+                    <span class="badge" :class="'badge-'+gw.status" x-text="gw.status"></span>
+                  </div>
+                  <div class="text-xs mb-3" style="color:rgba(160,220,220,0.6)" x-text="gw.model"></div>
+                  <div x-show="canAccess('admin')" class="flex gap-2">
+                    <button @click="openGatewayModal(gw)" class="btn-ghost px-3 py-1.5 text-xs flex-1">Edit</button>
+                    <button @click="deleteGateway(gw.id)" class="btn-danger px-3 py-1.5 text-xs">Delete</button>
+                  </div>
+                </div>
+              </template>
+              <div x-show="gateways.length===0" class="glass-card p-8 text-center text-sm" style="color:rgba(160,220,220,0.4)">No gateways yet</div>
+            </div>
+          </div>
+
+          <!-- ── DEVICES ── -->
+          <div x-show="currentPage==='devices'" class="page-enter space-y-4">
+            <div class="flex items-center justify-between">
+              <p class="text-sm" style="color:rgba(160,220,220,0.6)" x-text="devices.length+' devices registered'"></p>
+              <button x-show="canAccess('admin')" @click="openDeviceModal()" class="btn-primary px-4 py-2 text-sm">+ Add Device</button>
+            </div>
+            <div class="hidden md:block glass-card overflow-hidden">
+              <table class="tbl">
+                <thead><tr><th>Device</th><th>DevEUI</th><th>Profile</th><th>Gateway</th><th>Status</th><th>Last Seen</th><th>Last Reading</th><th x-show="canAccess('admin')">Actions</th></tr></thead>
+                <tbody>
+                  <template x-for="d in devices" :key="d.id">
+                    <tr>
+                      <td class="font-medium text-white" x-text="d.name"></td>
+                      <td class="font-mono text-xs" style="color:rgba(160,220,220,0.6)" x-text="d.dev_eui"></td>
+                      <td>
+                        <div class="flex items-center gap-1">
+                          <span x-text="d.profile_icon"></span>
+                          <span class="text-xs" x-text="d.profile_name||'—'"></span>
+                        </div>
+                      </td>
+                      <td class="text-xs" x-text="d.gateway_name||'—'"></td>
+                      <td><span class="badge" :class="'badge-'+d.status" x-text="d.status"></span></td>
+                      <td class="text-xs" style="color:rgba(160,220,220,0.5)" x-text="d.last_seen ? fmtTime(d.last_seen) : '—'"></td>
+                      <td>
+                        <div class="flex flex-wrap gap-1">
+                          <template x-for="[k,v] in Object.entries(d.last_payload||{}).slice(0,2)" :key="k">
+                            <span class="px-2 py-0.5 rounded text-xs font-mono" style="background:rgba(0,200,200,0.12);color:#a0e8e8"><span class="opacity-60" x-text="k+': '"></span><span x-text="v"></span></span>
+                          </template>
+                        </div>
+                      </td>
+                      <td x-show="canAccess('admin')">
+                        <div class="flex gap-2">
+                          <button @click="openDeviceModal(d)" class="btn-ghost px-2 py-1 text-xs">Edit</button>
+                          <button @click="deleteDevice(d.id)" class="btn-danger px-2 py-1 text-xs">Del</button>
+                        </div>
+                      </td>
+                    </tr>
+                  </template>
+                  <tr x-show="devices.length===0"><td colspan="8" class="text-center py-8 text-sm" style="color:rgba(160,220,220,0.4)">No devices registered yet.</td></tr>
+                </tbody>
+              </table>
+            </div>
+            <!-- Mobile cards -->
+            <div class="md:hidden space-y-3">
+              <template x-for="d in devices" :key="d.id">
+                <div class="glass-card p-4">
+                  <div class="flex items-start justify-between mb-2">
+                    <div>
+                      <div class="flex items-center gap-2">
+                        <span x-text="d.profile_icon||'📡'"></span>
+                        <span class="font-medium text-white" x-text="d.name"></span>
+                      </div>
+                      <div class="text-xs font-mono mt-0.5" style="color:rgba(160,220,220,0.5)" x-text="d.dev_eui"></div>
+                    </div>
+                    <span class="badge" :class="'badge-'+d.status" x-text="d.status"></span>
+                  </div>
+                  <div class="flex gap-2 text-xs mb-3" style="color:rgba(160,220,220,0.6)">
+                    <span x-text="d.profile_name||'No profile'"></span>
+                    <span>·</span>
+                    <span x-text="d.gateway_name||'No gateway'"></span>
+                  </div>
+                  <div class="flex flex-wrap gap-1 mb-3">
+                    <template x-for="[k,v] in Object.entries(d.last_payload||{}).slice(0,3)" :key="k">
+                      <span class="px-2 py-0.5 rounded text-xs font-mono" style="background:rgba(0,200,200,0.12);color:#a0e8e8"><span class="opacity-60" x-text="k+': '"></span><span x-text="v"></span></span>
+                    </template>
+                  </div>
+                  <div x-show="canAccess('admin')" class="flex gap-2">
+                    <button @click="openDeviceModal(d)" class="btn-ghost px-3 py-1.5 text-xs flex-1">Edit</button>
+                    <button @click="deleteDevice(d.id)" class="btn-danger px-3 py-1.5 text-xs">Delete</button>
+                  </div>
+                </div>
+              </template>
+              <div x-show="devices.length===0" class="glass-card p-8 text-center text-sm" style="color:rgba(160,220,220,0.4)">No devices yet</div>
+            </div>
+          </div>
+
+          <!-- ── DEVICE PROFILES ── -->
+          <div x-show="currentPage==='profiles'" class="page-enter space-y-4">
+            <div class="flex items-center justify-between">
+              <p class="text-sm" style="color:rgba(160,220,220,0.6)" x-text="profiles.length+' profiles available'"></p>
+              <button x-show="canAccess('admin')" @click="openProfileModal()" class="btn-primary px-4 py-2 text-sm">+ Add Custom Profile</button>
+            </div>
+            <!-- Group by manufacturer -->
+            <template x-for="mfr in manufacturers" :key="mfr">
+              <div class="glass-card p-5">
+                <h3 class="text-xs font-semibold uppercase tracking-wider mb-3" style="color:rgba(160,220,220,0.6)" x-text="mfr"></h3>
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                  <template x-for="p in profiles.filter(x=>x.manufacturer===mfr)" :key="p.id">
+                    <div class="glass p-4 rounded-xl flex items-start gap-3">
+                      <span class="text-2xl flex-shrink-0" x-text="p.icon"></span>
+                      <div class="flex-1 min-w-0">
+                        <div class="text-sm font-semibold text-white" x-text="p.name"></div>
+                        <div class="text-xs mt-0.5" style="color:rgba(160,220,220,0.5)" x-text="p.description"></div>
+                        <div class="flex items-center gap-2 mt-2">
+                          <span class="text-xs font-mono px-2 py-0.5 rounded" style="background:rgba(0,200,200,0.1);color:#80d8d8" x-text="p.decoder_key"></span>
+                          <span x-show="p.is_custom" class="badge role-admin text-xs">custom</span>
+                          <span class="text-xs" style="color:rgba(160,220,220,0.4)" x-text="p.device_count+' devices'"></span>
+                        </div>
+                      </div>
+                      <button x-show="p.is_custom && canAccess('admin')" @click="deleteProfile(p.id)" class="btn-danger px-2 py-1 text-xs flex-shrink-0">Del</button>
+                    </div>
+                  </template>
+                </div>
+              </div>
+            </template>
+          </div>
+
+          <!-- ── FORWARDING RULES ── -->
+          <div x-show="currentPage==='rules'" class="page-enter space-y-4">
+            <div class="flex items-center justify-between">
+              <p class="text-sm" style="color:rgba(160,220,220,0.6)" x-text="rules.length+' forwarding rules'"></p>
+              <button x-show="canAccess('operator')" @click="openRuleModal()" class="btn-primary px-4 py-2 text-sm">+ Add Rule</button>
+            </div>
+            <div class="glass-card overflow-hidden">
+              <table class="tbl">
+                <thead><tr><th>Name</th><th>Scope</th><th>Target Type</th><th>Target URL</th><th>Status</th><th x-show="canAccess('operator')">Actions</th></tr></thead>
+                <tbody>
+                  <template x-for="r in rules" :key="r.id">
+                    <tr>
+                      <td class="font-medium text-white" x-text="r.name"></td>
+                      <td class="text-xs" x-text="r.device_name || r.profile_name || 'All devices'"></td>
+                      <td><span class="badge" :class="'target-'+r.target_type" x-text="r.target_type"></span></td>
+                      <td class="text-xs font-mono max-w-xs truncate" style="color:rgba(160,220,220,0.6)" x-text="r.target_url"></td>
+                      <td>
+                        <span class="badge" :class="r.is_active ? 'badge-online' : 'badge-offline'" x-text="r.is_active ? 'active' : 'paused'"></span>
+                      </td>
+                      <td x-show="canAccess('operator')">
+                        <div class="flex gap-2">
+                          <button @click="toggleRule(r)" class="btn-ghost px-2 py-1 text-xs" x-text="r.is_active?'Pause':'Resume'"></button>
+                          <button @click="deleteRule(r.id)" class="btn-danger px-2 py-1 text-xs">Del</button>
+                        </div>
+                      </td>
+                    </tr>
+                  </template>
+                  <tr x-show="rules.length===0"><td colspan="6" class="text-center py-8 text-sm" style="color:rgba(160,220,220,0.4)">No forwarding rules yet.</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- ── SETTINGS ── -->
+          <div x-show="currentPage==='settings'" x-init="loadBrokerStatus()" class="page-enter max-w-2xl space-y-4">
+
+            <!-- Embedded Broker Status card -->
+            <div class="glass-card p-6">
+              <div class="flex items-center justify-between mb-4">
+                <h3 class="text-base font-semibold text-white">🔌 Embedded MQTT Broker</h3>
+                <div class="flex items-center gap-2">
+                  <span class="badge" :class="brokerStatus.status==='running' ? 'badge-online' : 'badge-warning'" x-text="brokerStatus.status||'loading…'"></span>
+                  <button @click="loadBrokerStatus()" class="btn-ghost px-3 py-1 text-xs">Refresh</button>
+                </div>
+              </div>
+              <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-5">
+                <div class="glass p-3 rounded-xl text-center">
+                  <div class="text-lg font-bold text-white" x-text="brokerStatus.mqtt_port||1883"></div>
+                  <div class="text-xs mt-0.5" style="color:rgba(160,220,220,0.5)">MQTT Port</div>
+                </div>
+                <div class="glass p-3 rounded-xl text-center">
+                  <div class="text-lg font-bold text-white" x-text="brokerStatus.ws_port||8083"></div>
+                  <div class="text-xs mt-0.5" style="color:rgba(160,220,220,0.5)">WebSocket Port</div>
+                </div>
+                <div class="glass p-3 rounded-xl text-center">
+                  <div class="text-lg font-bold text-white" x-text="brokerStatus.messages_published||0"></div>
+                  <div class="text-xs mt-0.5" style="color:rgba(160,220,220,0.5)">Messages</div>
+                </div>
+                <div class="glass p-3 rounded-xl text-center">
+                  <div class="text-lg font-bold text-white" x-text="fmtUptime(brokerStatus.uptime_seconds)"></div>
+                  <div class="text-xs mt-0.5" style="color:rgba(160,220,220,0.5)">Uptime</div>
+                </div>
+              </div>
+
+              <!-- Connection info box -->
+              <div class="rounded-xl p-4 space-y-2" style="background:rgba(0,0,0,0.25);border:1px solid rgba(0,200,200,0.12)">
+                <p class="text-xs font-semibold uppercase tracking-wider mb-3" style="color:rgba(160,220,220,0.5)">How to connect your gateway</p>
+                <div class="flex items-center gap-3">
+                  <span class="text-xs font-mono px-2 py-1 rounded" style="background:rgba(0,200,200,0.12);color:#a0e8e8;min-width:80px;display:inline-block">MQTT URL</span>
+                  <code class="text-xs text-white" x-text="brokerStatus.mqtt_url||'mqtt://localhost:1883'"></code>
+                </div>
+                <div class="flex items-center gap-3">
+                  <span class="text-xs font-mono px-2 py-1 rounded" style="background:rgba(0,200,200,0.12);color:#a0e8e8;min-width:80px;display:inline-block">WebSocket</span>
+                  <code class="text-xs text-white" x-text="brokerStatus.ws_url||'ws://localhost:8083'"></code>
+                </div>
+                <div class="flex items-center gap-3">
+                  <span class="text-xs font-mono px-2 py-1 rounded" style="background:rgba(0,200,200,0.12);color:#a0e8e8;min-width:80px;display:inline-block">Auth</span>
+                  <code class="text-xs text-white">Anonymous (no username/password required)</code>
+                </div>
+                <div class="mt-3 pt-3" style="border-top:1px solid rgba(0,200,200,0.1)">
+                  <p class="text-xs mb-2" style="color:rgba(160,220,220,0.5)">Subscribed uplink topics:</p>
+                  <div class="flex flex-wrap gap-2">
+                    <template x-for="t in (brokerStatus.subscribe_topics||[])" :key="t">
+                      <code class="text-xs px-2 py-1 rounded font-mono" style="background:rgba(0,200,200,0.1);color:#80d8d8" x-text="t"></code>
+                    </template>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="glass-card p-6 space-y-4">
+              <h3 class="text-base font-semibold text-white">🔗 ChirpStack Integration</h3>
+            <div class="glass-card p-6 space-y-4">
+              <h3 class="text-base font-semibold text-white">🔗 ChirpStack Integration</h3>
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div class="sm:col-span-2">
+                  <label class="block text-xs mb-1" style="color:rgba(160,220,220,0.6)">ChirpStack Server URL</label>
+                  <input x-model="settings.chirpstack_url" class="glass-input w-full px-3 py-2 text-sm" placeholder="https://cs.yourserver.com"/>
+                </div>
+                <div class="sm:col-span-2">
+                  <label class="block text-xs mb-1" style="color:rgba(160,220,220,0.6)">API Token</label>
+                  <input x-model="settings.chirpstack_token" type="password" class="glass-input w-full px-3 py-2 text-sm font-mono" placeholder="Bearer token"/>
+                </div>
+              </div>
+            </div>
+            <div class="glass-card p-6 space-y-4">
+              <h3 class="text-base font-semibold text-white">📊 Thingsboard Integration</h3>
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div class="sm:col-span-2">
+                  <label class="block text-xs mb-1" style="color:rgba(160,220,220,0.6)">Thingsboard Server URL</label>
+                  <input x-model="settings.tb_url" class="glass-input w-full px-3 py-2 text-sm" placeholder="https://tb.yourserver.com"/>
+                </div>
+                <div>
+                  <label class="block text-xs mb-1" style="color:rgba(160,220,220,0.6)">Username</label>
+                  <input x-model="settings.tb_user" class="glass-input w-full px-3 py-2 text-sm" placeholder="admin@tb.io"/>
+                </div>
+                <div>
+                  <label class="block text-xs mb-1" style="color:rgba(160,220,220,0.6)">Password</label>
+                  <input x-model="settings.tb_pass" type="password" class="glass-input w-full px-3 py-2 text-sm" placeholder="••••••••"/>
+                </div>
+              </div>
+            </div>
+            <div class="flex gap-3">
+              <button class="btn-primary px-6 py-2.5 text-sm">Save Settings</button>
+              <button class="btn-ghost px-4 py-2.5 text-sm">Test Connection</button>
+            </div>
+          </div>
+
+          <!-- ── USERS ── -->
+          <div x-show="currentPage==='users'" class="page-enter space-y-4">
+            <div class="flex items-center justify-between">
+              <p class="text-sm" style="color:rgba(160,220,220,0.6)" x-text="usersList.length+' users'"></p>
+              <button x-show="canAccess('superadmin')" @click="openUserModal()" class="btn-primary px-4 py-2 text-sm">+ Invite User</button>
+            </div>
+            <div class="glass-card overflow-hidden">
+              <table class="tbl">
+                <thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Status</th><th>Created</th><th x-show="canAccess('superadmin')">Actions</th></tr></thead>
+                <tbody>
+                  <template x-for="u in usersList" :key="u.id">
+                    <tr>
+                      <td>
+                        <div class="flex items-center gap-2">
+                          <div class="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0" style="background:linear-gradient(135deg,#008080,#00b3b3)" x-text="u.full_name[0]"></div>
+                          <span class="font-medium text-white" x-text="u.full_name"></span>
+                        </div>
+                      </td>
+                      <td class="text-xs" style="color:rgba(160,220,220,0.6)" x-text="u.email"></td>
+                      <td><span class="badge" :class="'role-'+u.role" x-text="u.role"></span></td>
+                      <td><span class="badge" :class="u.is_active ? 'badge-online' : 'badge-offline'" x-text="u.is_active ? 'active' : 'disabled'"></span></td>
+                      <td class="text-xs" style="color:rgba(160,220,220,0.5)" x-text="fmtDate(u.created_at)"></td>
+                      <td x-show="canAccess('superadmin')">
+                        <div class="flex gap-2">
+                          <button @click="openEditUserModal(u)" class="btn-ghost px-2 py-1 text-xs">Edit</button>
+                          <button @click="deleteUser(u.id)" :disabled="u.id===user.id" class="btn-danger px-2 py-1 text-xs" :class="u.id===user.id?'opacity-30':''">Del</button>
+                        </div>
+                      </td>
+                    </tr>
+                  </template>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- ── AUDIT LOG ── -->
+          <div x-show="currentPage==='audit'" class="page-enter space-y-4">
+            <div class="glass-card overflow-hidden">
+              <table class="tbl">
+                <thead><tr><th>Time</th><th>User</th><th>Action</th><th>Resource</th><th>Details</th></tr></thead>
+                <tbody>
+                  <template x-for="l in auditLogs" :key="l.id">
+                    <tr>
+                      <td class="text-xs whitespace-nowrap" style="color:rgba(160,220,220,0.5)" x-text="fmtTime(l.timestamp)"></td>
+                      <td class="text-xs" x-text="l.user_email"></td>
+                      <td>
+                        <span class="badge text-xs"
+                          :class="l.action==='DELETE'?'badge-offline':l.action==='CREATE'?'badge-online':'badge-warning'"
+                          x-text="l.action"></span>
+                      </td>
+                      <td class="text-xs" x-text="l.resource + (l.resource_id ? ' #'+l.resource_id : '')"></td>
+                      <td class="text-xs" style="color:rgba(160,220,220,0.6)" x-text="l.details||'—'"></td>
+                    </tr>
+                  </template>
+                  <tr x-show="auditLogs.length===0"><td colspan="5" class="text-center py-8 text-sm" style="color:rgba(160,220,220,0.4)">No audit log entries</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+        </main>
+
+        <!-- ── MOBILE BOTTOM NAV ── -->
+        <nav class="mobile-nav glass fixed bottom-0 left-0 right-0 flex justify-around items-center py-2 px-2 z-20" style="border-top:1px solid rgba(0,200,200,0.15)">
+          <template x-for="item in navItems.filter(i=>['dashboard','devices','gateways','settings'].includes(i.id))" :key="item.id">
+            <button @click="navigate(item.id)" class="flex flex-col items-center gap-0.5 px-3 py-1 rounded-lg transition-colors"
+              :style="currentPage===item.id ? 'color:#00b3b3' : 'color:rgba(160,220,220,0.5)'">
+              <span class="text-lg" x-text="item.icon"></span>
+              <span class="text-xs font-medium" x-text="item.label"></span>
+            </button>
+          </template>
+        </nav>
+      </div>
+    </div>
+  </template>
+
+  <!-- ═══════════════════════════════ MODALS ═══════════════════════════════ -->
+
+  <!-- Gateway Modal -->
+  <div x-show="modals.gateway" class="modal-overlay" @click.self="modals.gateway=false">
+    <div class="glass-card w-full max-w-lg p-6">
+      <h2 class="text-base font-semibold text-white mb-5" x-text="gatewayForm.id ? 'Edit Gateway' : 'Add Gateway'"></h2>
+      <div class="space-y-4">
+        <div><label class="block text-xs mb-1" style="color:rgba(160,220,220,0.6)">Name *</label>
+          <input x-model="gatewayForm.name" class="glass-input w-full px-3 py-2 text-sm" placeholder="Rooftop Gateway A"/></div>
+        <div><label class="block text-xs mb-1" style="color:rgba(160,220,220,0.6)">Gateway EUI *</label>
+          <input x-model="gatewayForm.eui" class="glass-input w-full px-3 py-2 text-sm font-mono" placeholder="AA555A0000000101" :disabled="!!gatewayForm.id"/></div>
+        <div><label class="block text-xs mb-1" style="color:rgba(160,220,220,0.6)">Model</label>
+          <input x-model="gatewayForm.model" class="glass-input w-full px-3 py-2 text-sm" placeholder="RAK WisGate Edge Lite 2"/></div>
+        <div><label class="block text-xs mb-1" style="color:rgba(160,220,220,0.6)">MQTT Topic Pattern</label>
+          <input x-model="gatewayForm.mqtt_topic_pattern" class="glass-input w-full px-3 py-2 text-sm font-mono" placeholder="application/+/device/+/rx"/></div>
+        <div class="grid grid-cols-2 gap-3">
+          <div><label class="block text-xs mb-1" style="color:rgba(160,220,220,0.6)">Latitude</label>
+            <input x-model="gatewayForm.lat" type="number" step="any" class="glass-input w-full px-3 py-2 text-sm" placeholder="12.9716"/></div>
+          <div><label class="block text-xs mb-1" style="color:rgba(160,220,220,0.6)">Longitude</label>
+            <input x-model="gatewayForm.lon" type="number" step="any" class="glass-input w-full px-3 py-2 text-sm" placeholder="77.5946"/></div>
+        </div>
+      </div>
+      <div class="flex gap-3 mt-6">
+        <button @click="saveGateway()" class="btn-primary px-5 py-2 text-sm flex-1" x-text="gatewayForm.id ? 'Update' : 'Add Gateway'"></button>
+        <button @click="modals.gateway=false" class="btn-ghost px-4 py-2 text-sm">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Device Modal -->
+  <div x-show="modals.device" class="modal-overlay" @click.self="modals.device=false">
+    <div class="glass-card w-full max-w-lg p-6">
+      <h2 class="text-base font-semibold text-white mb-5" x-text="deviceForm.id ? 'Edit Device' : 'Add Device'"></h2>
+      <div class="space-y-4">
+        <div><label class="block text-xs mb-1" style="color:rgba(160,220,220,0.6)">Name *</label>
+          <input x-model="deviceForm.name" class="glass-input w-full px-3 py-2 text-sm" placeholder="Warehouse Temp Sensor"/></div>
+        <div><label class="block text-xs mb-1" style="color:rgba(160,220,220,0.6)">DevEUI *</label>
+          <input x-model="deviceForm.dev_eui" class="glass-input w-full px-3 py-2 text-sm font-mono" placeholder="0102030405060708" :disabled="!!deviceForm.id"/></div>
+        <div><label class="block text-xs mb-1" style="color:rgba(160,220,220,0.6)">Gateway</label>
+          <select x-model="deviceForm.gateway_id" class="glass-input w-full px-3 py-2 text-sm">
+            <option value="">— None —</option>
+            <template x-for="gw in gateways" :key="gw.id">
+              <option :value="gw.id" x-text="gw.name"></option>
+            </template>
+          </select></div>
+        <div><label class="block text-xs mb-1" style="color:rgba(160,220,220,0.6)">Device Profile</label>
+          <select x-model="deviceForm.profile_id" class="glass-input w-full px-3 py-2 text-sm">
+            <option value="">— None (passthrough) —</option>
+            <template x-for="p in profiles" :key="p.id">
+              <option :value="p.id" x-text="p.icon + ' ' + p.name"></option>
+            </template>
+          </select></div>
+      </div>
+      <div class="flex gap-3 mt-6">
+        <button @click="saveDevice()" class="btn-primary px-5 py-2 text-sm flex-1" x-text="deviceForm.id ? 'Update' : 'Add Device'"></button>
+        <button @click="modals.device=false" class="btn-ghost px-4 py-2 text-sm">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Profile Modal -->
+  <div x-show="modals.profile" class="modal-overlay" @click.self="modals.profile=false">
+    <div class="glass-card w-full max-w-lg p-6">
+      <h2 class="text-base font-semibold text-white mb-5">Add Custom Device Profile</h2>
+      <div class="space-y-4">
+        <div class="grid grid-cols-2 gap-3">
+          <div><label class="block text-xs mb-1" style="color:rgba(160,220,220,0.6)">Manufacturer *</label>
+            <input x-model="profileForm.manufacturer" class="glass-input w-full px-3 py-2 text-sm" placeholder="Acme Corp"/></div>
+          <div><label class="block text-xs mb-1" style="color:rgba(160,220,220,0.6)">Model *</label>
+            <input x-model="profileForm.model" class="glass-input w-full px-3 py-2 text-sm" placeholder="SensorX100"/></div>
+        </div>
+        <div><label class="block text-xs mb-1" style="color:rgba(160,220,220,0.6)">Display Name *</label>
+          <input x-model="profileForm.name" class="glass-input w-full px-3 py-2 text-sm" placeholder="Acme SensorX100"/></div>
+        <div><label class="block text-xs mb-1" style="color:rgba(160,220,220,0.6)">Description</label>
+          <input x-model="profileForm.description" class="glass-input w-full px-3 py-2 text-sm" placeholder="What does this sensor measure?"/></div>
+        <div class="grid grid-cols-2 gap-3">
+          <div><label class="block text-xs mb-1" style="color:rgba(160,220,220,0.6)">Decoder Key</label>
+            <input x-model="profileForm.decoder_key" class="glass-input w-full px-3 py-2 text-sm font-mono" placeholder="acme_sensorx100"/></div>
+          <div><label class="block text-xs mb-1" style="color:rgba(160,220,220,0.6)">Icon (emoji)</label>
+            <input x-model="profileForm.icon" class="glass-input w-full px-3 py-2 text-sm text-center" placeholder="📡"/></div>
+        </div>
+      </div>
+      <div class="flex gap-3 mt-6">
+        <button @click="saveProfile()" class="btn-primary px-5 py-2 text-sm flex-1">Add Profile</button>
+        <button @click="modals.profile=false" class="btn-ghost px-4 py-2 text-sm">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Rule Modal -->
+  <div x-show="modals.rule" class="modal-overlay" @click.self="modals.rule=false">
+    <div class="glass-card w-full max-w-lg p-6">
+      <h2 class="text-base font-semibold text-white mb-5">Add Forwarding Rule</h2>
+      <div class="space-y-4">
+        <div><label class="block text-xs mb-1" style="color:rgba(160,220,220,0.6)">Rule Name *</label>
+          <input x-model="ruleForm.name" class="glass-input w-full px-3 py-2 text-sm" placeholder="Forward to Thingsboard"/></div>
+        <div><label class="block text-xs mb-1" style="color:rgba(160,220,220,0.6)">Scope — Device (optional)</label>
+          <select x-model="ruleForm.device_id" class="glass-input w-full px-3 py-2 text-sm">
+            <option value="">— All devices —</option>
+            <template x-for="d in devices" :key="d.id">
+              <option :value="d.id" x-text="d.name"></option>
+            </template>
+          </select></div>
+        <div><label class="block text-xs mb-1" style="color:rgba(160,220,220,0.6)">Target Type *</label>
+          <select x-model="ruleForm.target_type" class="glass-input w-full px-3 py-2 text-sm">
+            <option value="webhook">Webhook (HTTP POST)</option>
+            <option value="thingsboard">Thingsboard</option>
+            <option value="chirpstack">ChirpStack</option>
+          </select></div>
+        <div><label class="block text-xs mb-1" style="color:rgba(160,220,220,0.6)">Target URL *</label>
+          <input x-model="ruleForm.target_url" class="glass-input w-full px-3 py-2 text-sm font-mono" placeholder="https://webhook.site/..."/></div>
+      </div>
+      <div class="flex gap-3 mt-6">
+        <button @click="saveRule()" class="btn-primary px-5 py-2 text-sm flex-1">Add Rule</button>
+        <button @click="modals.rule=false" class="btn-ghost px-4 py-2 text-sm">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- User Modal -->
+  <div x-show="modals.user" class="modal-overlay" @click.self="modals.user=false">
+    <div class="glass-card w-full max-w-md p-6">
+      <h2 class="text-base font-semibold text-white mb-5" x-text="userForm.id ? 'Edit User' : 'Invite User'"></h2>
+      <div class="space-y-4">
+        <div><label class="block text-xs mb-1" style="color:rgba(160,220,220,0.6)">Full Name *</label>
+          <input x-model="userForm.full_name" class="glass-input w-full px-3 py-2 text-sm" placeholder="Jane Smith"/></div>
+        <div x-show="!userForm.id"><label class="block text-xs mb-1" style="color:rgba(160,220,220,0.6)">Email *</label>
+          <input x-model="userForm.email" type="email" class="glass-input w-full px-3 py-2 text-sm" placeholder="jane@company.io"/></div>
+        <div x-show="!userForm.id"><label class="block text-xs mb-1" style="color:rgba(160,220,220,0.6)">Password *</label>
+          <input x-model="userForm.password" type="password" class="glass-input w-full px-3 py-2 text-sm" placeholder="••••••••"/></div>
+        <div><label class="block text-xs mb-1" style="color:rgba(160,220,220,0.6)">Role</label>
+          <select x-model="userForm.role" class="glass-input w-full px-3 py-2 text-sm">
+            <option value="viewer">Viewer — read only</option>
+            <option value="operator">Operator — manage rules</option>
+            <option value="admin">Admin — manage all</option>
+            <option value="superadmin">Super Admin — full control</option>
+          </select></div>
+      </div>
+      <div class="flex gap-3 mt-6">
+        <button @click="saveUser()" class="btn-primary px-5 py-2 text-sm flex-1" x-text="userForm.id ? 'Update' : 'Create User'"></button>
+        <button @click="modals.user=false" class="btn-ghost px-4 py-2 text-sm">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>
